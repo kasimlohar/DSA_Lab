@@ -1,0 +1,34 @@
+# Ignore compiled files
+*.exe
+*.o
+*.obj
+
+# Ignore temporary files
+*.tmp
+*.log
+*.bak
+
+# Ignore editor/IDE-specific files
+.vscode/
+*.code-workspace
+*.suo
+*.user
+*.ncb
+*.opendb
+*.VC.db
+
+# Ignore backup files
+*~
+*.swp
+
+# Ignore temporary build files
+build/
+dist/
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore temporary test files
+temp.txt
