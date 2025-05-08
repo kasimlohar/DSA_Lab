@@ -3,282 +3,151 @@
 
 #include <iostream>
 #include <string>
-#include <algorithm>
 using namespace std;
 
-class AVLNode {
-public:
-    string key;
-    string meaning;
+struct Node {
+    string keyword, meaning;
+    Node *left, *right;
     int height;
-    AVLNode* left;
-    AVLNode* right;
-
-    AVLNode(string k, string m) : key(k), meaning(m), height(1), left(nullptr), right(nullptr) {}
+    Node(string k, string m) : keyword(k), meaning(m), left(nullptr), right(nullptr), height(1) {}
 };
 
 class AVLTree {
 private:
-    AVLNode* root;
+    Node* root;
 
-    // Get the height of a node
-    int height(AVLNode* node) {
+    int height(Node* node) {
         return node ? node->height : 0;
     }
-
-    // Get the balance factor of a node
-    int getBalance(AVLNode* node) {
-        return node ? height(node->left) - height(node->right) : 0;
+    int balanceFactor(Node* node) {
+        return height(node->left) - height(node->right);
+    }
+    void updateHeight(Node* node) {
+        node->height = max(height(node->left), height(node->right)) + 1;
     }
 
-    // Right rotate
-    AVLNode* rightRotate(AVLNode* y) {
-        AVLNode* x = y->left;
-        AVLNode* T2 = x->right;
-
+    Node* rightRotate(Node* y) {
+        Node* x = y->left;
+        Node* T2 = x->right;
         x->right = y;
         y->left = T2;
-
-        y->height = 1 + max(height(y->left), height(y->right));
-        x->height = 1 + max(height(x->left), height(x->right));
-
+        updateHeight(y);
+        updateHeight(x);
         return x;
     }
 
-    // Left rotate
-    AVLNode* leftRotate(AVLNode* x) {
-        AVLNode* y = x->right;
-        AVLNode* T2 = y->left;
-
+    Node* leftRotate(Node* x) {
+        Node* y = x->right;
+        Node* T2 = y->left;
         y->left = x;
         x->right = T2;
-
-        x->height = 1 + max(height(x->left), height(x->right));
-        y->height = 1 + max(height(y->left), height(y->right));
-
+        updateHeight(x);
+        updateHeight(y);
         return y;
     }
 
-    // Insert a new (key, meaning) pair
-    AVLNode* insert(AVLNode* node, string key, string meaning) {
-        if (!node) return new AVLNode(key, meaning);
-
-        if (key < node->key) {
-            node->left = insert(node->left, key, meaning);
-        } else if (key > node->key) {
-            node->right = insert(node->right, key, meaning);
-        } else {
-            throw runtime_error("Duplicate key insertion is not allowed.");
-        }
-
-        node->height = 1 + max(height(node->left), height(node->right));
-        int balance = getBalance(node);
-
-        // Left Left Case
-        if (balance > 1 && key < node->left->key) {
+    Node* balance(Node* node) {
+        int bf = balanceFactor(node);
+        if (bf > 1) {
+            if (balanceFactor(node->left) < 0)
+                node->left = leftRotate(node->left);
             return rightRotate(node);
         }
-
-        // Right Right Case
-        if (balance < -1 && key > node->right->key) {
+        if (bf < -1) {
+            if (balanceFactor(node->right) > 0)
+                node->right = rightRotate(node->right);
             return leftRotate(node);
         }
-
-        // Left Right Case
-        if (balance > 1 && key > node->left->key) {
-            node->left = leftRotate(node->left);
-            return rightRotate(node);
-        }
-
-        // Right Left Case
-        if (balance < -1 && key < node->right->key) {
-            node->right = rightRotate(node->right);
-            return leftRotate(node);
-        }
-
         return node;
     }
 
-    // Find the node with the minimum key
-    AVLNode* minValueNode(AVLNode* node) {
-        AVLNode* current = node;
-        while (current->left) {
-            current = current->left;
-        }
-        return current;
+    Node* insert(Node* node, string keyword, string meaning) {
+        if (!node) return new Node(keyword, meaning);
+        if (keyword < node->keyword) node->left = insert(node->left, keyword, meaning);
+        else if (keyword > node->keyword) node->right = insert(node->right, keyword, meaning);
+        else node->meaning = meaning;
+        updateHeight(node);
+        return balance(node);
     }
 
-    // Delete a keyword
-    AVLNode* deleteNode(AVLNode* node, string key) {
+    Node* deleteNode(Node* node, string keyword) {
         if (!node) return node;
-
-        if (key < node->key) {
-            node->left = deleteNode(node->left, key);
-        } else if (key > node->key) {
-            node->right = deleteNode(node->right, key);
-        } else {
+        if (keyword < node->keyword) node->left = deleteNode(node->left, keyword);
+        else if (keyword > node->keyword) node->right = deleteNode(node->right, keyword);
+        else {
             if (!node->left || !node->right) {
-                AVLNode* temp = node->left ? node->left : node->right;
-                delete node;
-                return temp;
+                Node* temp = node->left ? node->left : node->right;
+                if (!temp) { delete node; return nullptr; }
+                *node = *temp;
+                delete temp;
+            } else {
+                Node* temp = node->right;
+                while (temp && temp->left) temp = temp->left;
+                node->keyword = temp->keyword;
+                node->meaning = temp->meaning;
+                node->right = deleteNode(node->right, temp->keyword);
             }
-
-            AVLNode* temp = minValueNode(node->right);
-            node->key = temp->key;
-            node->meaning = temp->meaning;
-            node->right = deleteNode(node->right, temp->key);
         }
-
-        node->height = 1 + max(height(node->left), height(node->right));
-        int balance = getBalance(node);
-
-        // Balancing the tree
-        if (balance > 1 && getBalance(node->left) >= 0) {
-            return rightRotate(node);
-        }
-
-        if (balance > 1 && getBalance(node->left) < 0) {
-            node->left = leftRotate(node->left);
-            return rightRotate(node);
-        }
-
-        if (balance < -1 && getBalance(node->right) <= 0) {
-            return leftRotate(node);
-        }
-
-        if (balance < -1 && getBalance(node->right) > 0) {
-            node->right = rightRotate(node->right);
-            return leftRotate(node);
-        }
-
-        return node;
+        updateHeight(node);
+        return balance(node);
     }
 
-    // In-order traversal for ascending order
-    void inOrder(AVLNode* node) {
+    void inOrder(Node* node) {
         if (!node) return;
         inOrder(node->left);
-        cout << node->key << ": " << node->meaning << endl;
+        cout << node->keyword << ": " << node->meaning << endl;
         inOrder(node->right);
-    }
-
-    // Reverse in-order traversal for descending order
-    void reverseInOrder(AVLNode* node) {
-        if (!node) return;
-        reverseInOrder(node->right);
-        cout << node->key << ": " << node->meaning << endl;
-        reverseInOrder(node->left);
     }
 
 public:
     AVLTree() : root(nullptr) {}
 
-    void insert(string key, string meaning) {
-        root = insert(root, key, meaning);
+    void insertKeyword(string keyword, string meaning) {
+        root = insert(root, keyword, meaning);
     }
 
-    void deleteKey(string key) {
-        root = deleteNode(root, key);
+    void deleteKeyword(string keyword) {
+        root = deleteNode(root, keyword);
     }
 
-    void update(string key, string newMeaning) {
-        AVLNode* current = root;
-        while (current) {
-            if (key == current->key) {
-                current->meaning = newMeaning;
-                return;
-            } else if (key < current->key) {
-                current = current->left;
-            } else {
-                current = current->right;
-            }
-        }
-        throw runtime_error("Key not found.");
+    void updateKeyword(string keyword, string meaning) {
+        root = insert(root, keyword, meaning);
     }
 
-    void displayAscending() {
-        cout << "Dictionary in ascending order:" << endl;
+    void display() {
         inOrder(root);
     }
 
-    void displayDescending() {
-        cout << "Dictionary in descending order:" << endl;
-        reverseInOrder(root);
+    int maxComparisons() {
+        return height(root);
     }
 };
 
 int main() {
-    AVLTree dictionary;
-    int choice;
-    string key, meaning;
+    AVLTree glossary;
 
-    do {
-        cout << "\nMenu:\n";
-        cout << "1. Insert a new (keyword, meaning) pair\n";
-        cout << "2. Delete a keyword\n";
-        cout << "3. Update the meaning of a keyword\n";
-        cout << "4. Display all entries in ascending order\n";
-        cout << "5. Display all entries in descending order\n";
-        cout << "6. Exit\n";
-        cout << "Enter your choice: ";
-        cin >> choice;
+    glossary.insertKeyword("Algorithm", "A step-by-step procedure for solving a problem.");
+    glossary.insertKeyword("BinaryTree", "A tree data structure with at most two children.");
+    glossary.insertKeyword("Queue", "A linear structure which follows FIFO order.");
 
-        switch (choice) {
-            case 1:
-                cout << "Enter keyword: ";
-                cin >> key;
-                cout << "Enter meaning: ";
-                cin.ignore();
-                getline(cin, meaning);
-                try {
-                    dictionary.insert(key, meaning);
-                    cout << "Inserted successfully." << endl;
-                } catch (runtime_error& e) {
-                    cout << e.what() << endl;
-                }
-                break;
+    cout << endl;
+    cout << "Glossary in Ascending Order:" << endl;
+    glossary.display();
 
-            case 2:
-                cout << "Enter keyword to delete: ";
-                cin >> key;
-                try {
-                    dictionary.deleteKey(key);
-                    cout << "Deleted successfully." << endl;
-                } catch (runtime_error& e) {
-                    cout << e.what() << endl;
-                }
-                break;
+    cout << endl;
+    cout << "Updating 'Queue' meaning..." << endl;
+    glossary.updateKeyword("Queue", "A collection where elements are added at one end and removed from the other.");
 
-            case 3:
-                cout << "Enter keyword to update: ";
-                cin >> key;
-                cout << "Enter new meaning: ";
-                cin.ignore();
-                getline(cin, meaning);
-                try {
-                    dictionary.update(key, meaning);
-                    cout << "Updated successfully." << endl;
-                } catch (runtime_error& e) {
-                    cout << e.what() << endl;
-                }
-                break;
+    glossary.display();
 
-            case 4:
-                dictionary.displayAscending();
-                break;
+    cout << endl;
+    cout << "Deleting 'BinaryTree'..." << endl;
+    glossary.deleteKeyword("BinaryTree");
 
-            case 5:
-                dictionary.displayDescending();
-                break;
+    glossary.display();
 
-            case 6:
-                cout << "Exiting..." << endl;
-                break;
-
-            default:
-                cout << "Invalid choice. Please try again." << endl;
-        }
-    } while (choice != 6);
+    cout << endl;
+    cout << "Max Comparisons for Searching: " << glossary.maxComparisons() << endl;
 
     return 0;
 }

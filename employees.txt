@@ -1,0 +1,2 @@
+1,John,Manager,75000
+101,kasim,STUDENT,12000

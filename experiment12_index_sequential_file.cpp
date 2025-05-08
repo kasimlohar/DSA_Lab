@@ -3,194 +3,75 @@
 
 #include <iostream>
 #include <fstream>
-#include <map>
-#include <sstream>
 #include <string>
 using namespace std;
 
-// Structure to represent an employee record
 struct Employee {
     int id;
-    string name;
-    string designation;
+    string name, designation;
     double salary;
 };
 
-// Function to load the index from the primary file
-void loadIndex(const string& primaryFile, map<int, streampos>& index) {
-    ifstream file(primaryFile);
-    if (!file) {
-        cerr << "Error opening primary file for reading." << endl;
-        return;
-    }
-
-    index.clear();
-    string line;
-    streampos pos = file.tellg();
-
-    while (getline(file, line)) {
-        stringstream ss(line);
-        string idStr;
-        getline(ss, idStr, ',');
-        int id = stoi(idStr);
-        index[id] = pos;
-        pos = file.tellg();
-    }
-
-    file.close();
-}
-
-// Function to add a new employee record
-void addEmployee(const string& primaryFile, map<int, streampos>& index) {
-    ofstream file(primaryFile, ios::app); // Open file in append mode
-    if (!file) {
-        cerr << "Error opening primary file for writing." << endl;
-        return;
-    }
-
-    Employee emp;
+void addEmployee(const string& filename) {
+    ofstream file(filename, ios::app);
+    Employee e;
     cout << "Enter Employee ID: ";
-    cin >> emp.id;
-    cin.ignore(); // Clear input buffer
+    cin >> e.id;
+    cin.ignore();
     cout << "Enter Name: ";
-    getline(cin, emp.name);
+    getline(cin, e.name);
     cout << "Enter Designation: ";
-    getline(cin, emp.designation);
+    getline(cin, e.designation);
     cout << "Enter Salary: ";
-    cin >> emp.salary;
-
-    if (index.find(emp.id) != index.end()) {
-        cout << "Error: Employee ID already exists." << endl;
-        return;
-    }
-
-    streampos pos = file.tellp();
-    file << emp.id << "," << emp.name << "," << emp.designation << "," << emp.salary << endl;
+    cin >> e.salary;
+    file << e.id << "," << e.name << "," << e.designation << "," << e.salary << endl;
     file.close();
-
-    index[emp.id] = pos; // Update the index
-    cout << "Employee record added successfully." << endl;
+    cout << "Record added.\n";
 }
 
-// Function to delete an employee record
-void deleteEmployee(const string& primaryFile, map<int, streampos>& index) {
-    ifstream file(primaryFile);
-    if (!file) {
-        cerr << "Error opening primary file for reading." << endl;
-        return;
-    }
-
-    ofstream tempFile("temp.txt");
-    if (!tempFile) {
-        cerr << "Error creating temporary file." << endl;
-        return;
-    }
-
-    int idToDelete;
-    cout << "Enter Employee ID to delete: ";
-    cin >> idToDelete;
-
+void searchEmployee(const string& filename) {
+    ifstream file(filename);
+    int id;
+    cout << "Enter Employee ID to search: ";
+    cin >> id;
     string line;
     bool found = false;
-
     while (getline(file, line)) {
-        stringstream ss(line);
-        string idStr;
-        getline(ss, idStr, ',');
-        int id = stoi(idStr);
-
-        if (id == idToDelete) {
+        int pos = line.find(',');
+        int eid = stoi(line.substr(0, pos));
+        if (eid == id) {
+            cout << "Record: " << line << endl;
             found = true;
-        } else {
-            tempFile << line << endl;
+            break;
         }
     }
-
+    if (!found) cout << "Record not found.\n";
     file.close();
-    tempFile.close();
-
-    if (found) {
-        remove(primaryFile.c_str());
-        rename("temp.txt", primaryFile.c_str());
-        index.erase(idToDelete); // Update the index
-        cout << "Employee record deleted successfully." << endl;
-    } else {
-        remove("temp.txt");
-        cout << "Record not found." << endl;
-    }
 }
 
-// Function to search and display an employee record by ID
-void searchEmployee(const string& primaryFile, const map<int, streampos>& index) {
-    int idToSearch;
-    cout << "Enter Employee ID to search: ";
-    cin >> idToSearch;
-
-    auto it = index.find(idToSearch);
-    if (it == index.end()) {
-        cout << "Record not found." << endl;
-        return;
-    }
-
-    ifstream file(primaryFile);
-    if (!file) {
-        cerr << "Error opening primary file for reading." << endl;
-        return;
-    }
-
-    file.seekg(it->second);
+void displayAll(const string& filename) {
+    ifstream file(filename);
     string line;
-    getline(file, line);
-
-    stringstream ss(line);
-    string idStr, name, designation, salaryStr;
-    getline(ss, idStr, ',');
-    getline(ss, name, ',');
-    getline(ss, designation, ',');
-    getline(ss, salaryStr, ',');
-
-    cout << "Employee ID: " << idStr << endl;
-    cout << "Name: " << name << endl;
-    cout << "Designation: " << designation << endl;
-    cout << "Salary: " << salaryStr << endl;
-
+    cout << "All Records:\n";
+    while (getline(file, line)) {
+        cout << line << endl;
+    }
     file.close();
 }
 
 int main() {
-    const string primaryFile = "employees.txt";
-    map<int, streampos> index;
-
-    // Load the index from the primary file
-    loadIndex(primaryFile, index);
-
-    int choice;
+    string filename = "employees.txt";
+    int ch;
     do {
-        cout << "\nMenu:\n";
-        cout << "1. Add Employee Record\n";
-        cout << "2. Delete Employee Record\n";
-        cout << "3. Search Employee Record\n";
-        cout << "4. Exit\n";
-        cout << "Enter your choice: ";
-        cin >> choice;
-
-        switch (choice) {
-            case 1:
-                addEmployee(primaryFile, index);
-                break;
-            case 2:
-                deleteEmployee(primaryFile, index);
-                break;
-            case 3:
-                searchEmployee(primaryFile, index);
-                break;
-            case 4:
-                cout << "Exiting..." << endl;
-                break;
-            default:
-                cout << "Invalid choice. Please try again." << endl;
+        cout << "\n1. Add\n2. Search\n3. Display All\n4. Exit\nEnter choice: ";
+        cin >> ch;
+        switch (ch) {
+            case 1: addEmployee(filename); break;
+            case 2: searchEmployee(filename); break;
+            case 3: displayAll(filename); break;
+            case 4: cout << "Exiting...\n"; break;
+            default: cout << "Invalid choice.\n";
         }
-    } while (choice != 4);
-
+    } while (ch != 4);
     return 0;
 }
